@@ -61,6 +61,12 @@ export default {
           icon: 'history'
         })
       }
+      // Add our custom Sync to Watch option
+      items.push({
+        text: 'Sync to Watch',
+        value: 'syncToWatch',
+        icon: 'watch'
+      });
 
       if (!this.isPodcast || this.episode) {
         if (!this.userIsFinished) {
