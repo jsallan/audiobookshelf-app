@@ -25,6 +25,7 @@ import com.audiobookshelf.app.plugins.AbsDownloader
 import com.audiobookshelf.app.plugins.AbsFileSystem
 import com.audiobookshelf.app.plugins.AbsLogger
 import com.getcapacitor.BridgeActivity
+import com.audiobookshelf.app.plugins.WatchSyncPlugin // <-- Add this import
 
 
 class MainActivity : BridgeActivity() {
@@ -52,6 +53,7 @@ class MainActivity : BridgeActivity() {
     registerPlugin(AbsFileSystem::class.java)
     registerPlugin(AbsDatabase::class.java)
     registerPlugin(AbsLogger::class.java)
+    registerPlugin(WatchSyncPlugin::class.java) // <-- Add this line
 
     super.onCreate(savedInstanceState)
     Log.d(tag, "onCreate")

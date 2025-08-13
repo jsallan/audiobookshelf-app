@@ -8,7 +8,7 @@
 
 <script>
 import { Dialog } from '@capacitor/dialog'
-import { AbsFileSystem } from '@/plugins/capacitor'
+import { AbsFileSystem, WatchSync} from '@/plugins/capacitor'
 
 export default {
   props: {
@@ -271,9 +271,15 @@ export default {
     }
   },
   methods: {
-    moreMenuAction(action) {
+    async moreMenuAction(action) {
       this.show = false
-      if (action === 'manageLocal') {
+      if (action === 'syncToWatch') {
+        if (WatchSync) {
+          await WatchSync.syncToWatch({
+            itemId: this.libraryItem.id
+          })
+        }
+      } else if (action === 'manageLocal') {
         this.$nextTick(() => {
           this.$router.push(`/localMedia/item/${this.localLibraryItemId}`)
         })
