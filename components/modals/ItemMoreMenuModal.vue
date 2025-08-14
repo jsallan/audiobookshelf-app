@@ -8,7 +8,7 @@
 
 <script>
 import { Dialog } from '@capacitor/dialog'
-import { AbsFileSystem, WatchSync} from '@/plugins/capacitor'
+import { AbsFileSystem, WatchSync } from '@/plugins/capacitor'
 
 export default {
   props: {
@@ -66,7 +66,7 @@ export default {
         text: 'Sync to Watch',
         value: 'syncToWatch',
         icon: 'watch'
-      });
+      })
 
       if (!this.isPodcast || this.episode) {
         if (!this.userIsFinished) {
@@ -308,11 +308,18 @@ export default {
     async syncToWatchClick() {
       console.log('Attempting to call WatchSync plugin...')
       if (WatchSync) {
-          const downloadUrl = this.$store.getters['user/getServerAddress'] + '/api/items/' + this.libraryItem.id + '/download'
-          await WatchSync.syncToWatch({
-            itemId: this.libraryItem.id,
-            downloadUrl: downloadUrl
-        })
+        // Create a single payload object to keep the code clean.
+        const payload = {
+          itemId: this.libraryItem.id,
+          downloadUrl: this.$store.getters['user/getServerAddress'] + '/api/items/' + this.libraryItem.id + '/download',
+          token: this.$store.getters['user/getToken']
+        }
+
+        // Log the entire payload for easy debugging.
+        console.log('Sending payload to native plugin:', payload)
+
+        // Send the clean payload to the native plugin.
+        await WatchSync.syncToWatch(payload)
       }
     },
     async toggleFinished() {
