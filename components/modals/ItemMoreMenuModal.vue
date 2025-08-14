@@ -274,11 +274,7 @@ export default {
     async moreMenuAction(action) {
       this.show = false
       if (action === 'syncToWatch') {
-        if (WatchSync) {
-          await WatchSync.syncToWatch({
-            itemId: this.libraryItem.id
-          })
-        }
+        this.syncToWatchClick()
       } else if (action === 'manageLocal') {
         this.$nextTick(() => {
           this.$router.push(`/localMedia/item/${this.localLibraryItemId}`)
@@ -307,6 +303,16 @@ export default {
         this.showSendEbookDevicesModal = true
       } else if (action === 'openWebClient') {
         this.$store.dispatch('user/openWebClient', `/item/${this.serverLibraryItemId}`)
+      }
+    },
+    async syncToWatchClick() {
+      console.log('Attempting to call WatchSync plugin...')
+      if (WatchSync) {
+          const downloadUrl = this.$store.getters['user/getServerAddress'] + '/api/items/' + this.libraryItem.id + '/download'
+          await WatchSync.syncToWatch({
+            itemId: this.libraryItem.id,
+            downloadUrl: downloadUrl
+        })
       }
     },
     async toggleFinished() {

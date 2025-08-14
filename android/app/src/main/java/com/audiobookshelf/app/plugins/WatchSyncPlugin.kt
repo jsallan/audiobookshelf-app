@@ -9,6 +9,12 @@ import com.getcapacitor.annotation.CapacitorPlugin
 @CapacitorPlugin(name = "WatchSync")
 class WatchSyncPlugin : Plugin() {
 
+  // This method is called when the plugin is first initialized by the app.
+  override fun load() {
+    super.load()
+    Log.d("WatchSyncPlugin", "WatchSyncPlugin loaded successfully.") // <-- ADD THIS LOG
+  }
+
   @PluginMethod
   fun syncToWatch(call: PluginCall) {
     val itemId = call.getString("itemId") ?: ""
