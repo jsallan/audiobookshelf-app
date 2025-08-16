@@ -2,19 +2,17 @@ package com.audiobookshelf.app.plugins
 
 import android.content.Context
 import android.util.Log
+import com.google.android.gms.wearable.Asset
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.io.File
-import java.io.FileInputStream
 
 class WearOsSyncService(context: Context) : WatchSyncService {
 
   private val nodeClient = Wearable.getNodeClient(context)
-  // The ChannelClient is the API for sending large data streams like files.
-  private val channelClient = Wearable.getChannelClient(context)
+  // The DataClient is the modern API for syncing data and assets.
+  private val dataClient = Wearable.getDataClient(context)
 
   override suspend fun findConnectedWatches(): List<WatchDevice> {
     return try {
@@ -32,55 +30,36 @@ class WearOsSyncService(context: Context) : WatchSyncService {
     }
   }
 
-  /**
-   * This method now contains the logic to stream a file to the watch.
-   */
-  override fun syncBook(watch: WatchDevice, filePath: String, bookId: String): Flow<Int> = callbackFlow {
+  // The syncBook method is now a simple suspend function.
+  // It no longer returns a Flow, as the system handles the transfer progress.
+  override suspend fun syncBook(watch: WatchDevice, filePath: String, bookId: String) {
     try {
       val file = File(filePath)
       if (!file.exists()) {
         throw Exception("File to sync does not exist at path: $filePath")
       }
 
-      // A "channel" is a persistent connection for streaming data.
-      // The path acts as a unique identifier for the type of data being sent.
-      val channel = channelClient.openChannel(watch.id, "/audiobook/$bookId").await()
-      Log.d("WearOsSyncService", "Opened channel to ${watch.name} with path: ${channel.path}")
+      // Create an "Asset" from the file. An asset is a blob of binary data.
+      val fileAsset = Asset.createFromFd(android.os.ParcelFileDescriptor.open(file, android.os.ParcelFileDescriptor.MODE_READ_ONLY))
 
-      // Get an output stream to write data to the watch.
-      val outputStream = channelClient.getOutputStream(channel).await()
-      val inputStream = FileInputStream(file)
-      val totalSize = file.length()
-      var bytesSent = 0L
-
-      Log.d("WearOsSyncService", "Streaming file: $filePath ($totalSize bytes)")
-
-      outputStream.use { stream ->
-        val buffer = ByteArray(4096) // 4KB buffer
-        var len: Int
-        while (inputStream.read(buffer).also { len = it } > 0) {
-          stream.write(buffer, 0, len)
-          bytesSent += len
-          // Calculate and send progress updates.
-          val progress = ((bytesSent.toDouble() / totalSize.toDouble()) * 100).toInt()
-          trySend(progress)
-        }
+      // Create a Data Map Request. This is like an envelope for our data.
+      // The path is a unique identifier for this type of data.
+      val request = PutDataMapRequest.create("/audiobook/$bookId").apply {
+        // Attach the file asset to the request with a key.
+        dataMap.putAsset("audio_file", fileAsset)
+        // Add a timestamp to ensure this data item is always seen as "new"
+        dataMap.putLong("timestamp", System.currentTimeMillis())
       }
 
-      Log.d("WearOsSyncService", "File stream complete. Closing channel.")
-      channelClient.close(channel).await()
-      trySend(100) // Ensure we end at 100%
-      close() // Close the flow
+      Log.d("WearOsSyncService", "Putting data item with asset for book: $bookId")
+      // Hand the request off to the system. It will handle the transfer reliably.
+      dataClient.putDataItem(request.asPutDataRequest().setUrgent()).await()
+      Log.d("WearOsSyncService", "Successfully put data item for book: $bookId")
 
     } catch (e: Exception) {
-      Log.e("WearOsSyncService", "Failed to sync book", e)
-      close(e) // Close the flow with an error
-    }
-
-    awaitClose {
-      // This block is called when the flow is cancelled.
-      // We can add cleanup logic here if needed in the future.
-      Log.d("WearOsSyncService", "Sync flow is closing.")
+      Log.e("WearOsSyncService", "Failed to sync book with DataClient", e)
+      // Re-throw the exception so the plugin can catch it.
+      throw e
     }
   }
 }
